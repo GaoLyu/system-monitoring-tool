@@ -12,7 +12,7 @@
 
 void repeat(char *string, int num){
    for(int i=0;i<num;i++){
-      printf("%s\n",string);
+      printf("%s",string);
    }
 }
 
@@ -28,23 +28,35 @@ void system_info(){
    printf("Architecture = %s\n",uts_name.machine);
 }
 
-void memory(){
+void memory(int size, int i){
    struct sysinfo info;
    sysinfo(&info);
    float phy_used=(info.totalram-info.freeram)/(float)1073741824;
    float phy_tot=info.totalram/(float)1073741824;
    float vir_used=phy_used+(info.totalswap-info.freeswap)/(float)1073741824;
    float vir_tot=phy_tot+info.totalswap/(float)1073741824;
-
+   printf("\x1b[%dA",size-i);
    printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",phy_used,phy_tot,vir_used,vir_tot);
+   repeat("\n",size-i-1);
 }
 void samples(int size, unsigned time){
-   
+   printf("-----------------------------------\n");
+   printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
+
+   repeat("\n",size);
+   printf("-----------------------------------\n");
+   printf("\x1b[1A");
    
    for(int i=0;i<size;i++){
       
-      memory();
-      sleep(time);
+      memory(size,i);
+      if(i!=size-1){
+         sleep(time);
+      }
+      else{
+         printf("\x1b[1B");
+      }
+
    }
 }
 
@@ -225,8 +237,8 @@ int main(int argc, char **argv){
       user_session();
 
       // Memory
-      printf("-----------------------------------\n");
-      printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
+      // printf("-----------------------------------\n");
+      // printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
 
       if(sample==-1){
          sample=10;
