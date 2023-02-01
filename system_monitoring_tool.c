@@ -82,8 +82,9 @@ void user_session(){
    }
 }
 
-// get the first line information from /proc/stat
-float cpu_usage(){
+// get the cpu usage of the current sample 
+// and store it in array cpu[] at index i
+void cpu_usage(float cpu[],int i){
    FILE *fptr;
    int a1,a2,a3,a4,a5,a6,a7;
    fptr = fopen("/proc/stat","r");
@@ -95,25 +96,28 @@ float cpu_usage(){
       char b[1024];
       fscanf(fptr,"%s %d %d %d %d %d %d %d",
          b, &a1, &a2, &a3, &a4, &a5, &a6, &a7);
-      int totaluse=a1+a2+a3+a5+a6+a7;
+      float totaluse=a1+a2+a3+a5+a6+a7;
+      cpu[i]=totaluse;
       int i=fclose(fptr);
       if(i!=0){
          fprintf(stderr,"Error closing the file.");
          exit(1);
       }
-      else{
-         return totaluse;
-      }
    }
 }
 
-// get the cpu usage from 2 samples taken
-// between 10 microseconds. Resukt has unit %
-void cpu_use(){
-   float previous=cpu_usage();
-   usleep(100);
-   float current=cpu_usage();
-   printf("total cpu use = %.10f %% \n",(current-previous)/previous*100);
+// get cpu_usage by comparing the information
+// stored at index i-1 and i
+void cpu_use(float cpu[],int i){
+   float cpu_usage;
+   if(i==0){
+      cpu_usage=0.0;
+   }
+   else{
+      cpu_usage=(cpu[i]-cpu[i-1])/cpu[i]*100.0;
+   }
+
+   printf("total cpu use = %.10f %% \n",cpu_usage);
 }
 
 // get number of cores by calculating how many iterations needed
@@ -215,7 +219,7 @@ void sample_tdelay(int sample,int time){
 }
 
 void sequential(int sample,int time,struct memory memories[],
-   struct option long_options[]){
+   struct option long_options[],float cpu[]){
    sample_tdelay(sample,time);
    int i=0;
    int num=cpu_core();
@@ -233,7 +237,8 @@ void sequential(int sample,int time,struct memory memories[],
          repeat("\n",sample-1-i);
          printf("-----------------------------------\n");
          printf("Number of cores: %d\n",num);
-         cpu_use();
+         cpu_usage(cpu,i);
+         cpu_use(cpu,i);
          if(*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1){
             printf("-----------------------------------\n");
          }
@@ -247,7 +252,7 @@ void sequential(int sample,int time,struct memory memories[],
    }
 }
 
-void system_opt(int sample,int time, struct memory memories[]){
+void system_opt(int sample,int time, struct memory memories[], float cpu[]){
    int i=0;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -261,7 +266,8 @@ void system_opt(int sample,int time, struct memory memories[]){
       repeat("\n",sample-1-i);
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
-      cpu_use();
+      cpu_usage(cpu,i);
+      cpu_use(cpu,i);
       sleep(time);  
    }
 }  
@@ -279,7 +285,7 @@ void user_opt(int sample,int time){
    }
 }
 
-void all(int sample, int time, struct memory memories[]){
+void all(int sample, int time, struct memory memories[],float cpu[]){
    int i;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -296,7 +302,8 @@ void all(int sample, int time, struct memory memories[]){
       user_session();
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
-      cpu_use();
+      cpu_usage(cpu,i);
+      cpu_use(cpu,i);
       sleep(time);
    }
 }
@@ -325,22 +332,22 @@ int main(int argc, char **argv){
    }
    // have recognized all the command line arguments
    struct memory memories[sample]; 
-   
+   float cpu[sample];
 
    if(sequential_flag==0){
       if(system_flag==1 && user_flag==0){
-         system_opt(sample,time,memories);
+         system_opt(sample,time,memories,cpu);
       }
       
       else if(user_flag==1 && system_flag==0){
          user_opt(sample,time);
       }
       else{
-         all(sample,time,memories);
+         all(sample,time,memories,cpu);
       }
    }
    else{
-      sequential(sample,time,memories,long_options);
+      sequential(sample,time,memories,long_options,cpu);
    }
    system_info();
    return 0;
