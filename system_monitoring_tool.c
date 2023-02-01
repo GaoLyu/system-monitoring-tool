@@ -31,55 +31,58 @@ void system_info(){
    printf("Release = %s\n",uts_name.release);
    printf("Architecture = %s\n",uts_name.machine);
    printf("-----------------------------------\n");
-
 }
 
+// store the current memory information in 
+// array memories at index i
 void memory(struct memory memories[], int i){
    struct sysinfo info;
    sysinfo(&info);
-   float p_used=(info.totalram-info.freeram)/(float)1073741824;
-   float p_tot=info.totalram/(float)1073741824;
-   float v_used=p_used+(info.totalswap-info.freeswap)/(float)1073741824;
-   float v_tot=p_tot+info.totalswap/(float)1073741824;
-   
+   //convert byte to gitabyte
+   float gb=1073741824.0;
+   float p_used=(info.totalram-info.freeram)/gb;
+   float p_tot=info.totalram/gb;
+   float v_used=p_used+(info.totalswap-info.freeswap)/gb;
+   float v_tot=p_tot+info.totalswap/gb;
    memories[i].phy_used=p_used;
    memories[i].phy_tot=p_tot;
    memories[i].vir_used=v_used;
    memories[i].vir_tot=v_tot;
 }
 
+// print all stored memory information 
+// from index 0 to i (inclusive)
 void print_memory(struct memory memories[], int i){
-   for(int j=0;j<i;j++){
-      printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",memories[j].phy_used,memories[j].phy_tot,memories[j].vir_used,memories[j].vir_tot);
+   for(int j=0;j<=i;j++){
+      printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",
+         memories[j].phy_used,
+         memories[j].phy_tot,
+         memories[j].vir_used,
+         memories[j].vir_tot);
    }
 }
 
-   
+// print the memory information at index j
 void print_one_memory(struct memory memories[], int j){
-   printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",memories[j].phy_used,memories[j].phy_tot,memories[j].vir_used,memories[j].vir_tot);
+   printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",
+      memories[j].phy_used,
+      memories[j].phy_tot,
+      memories[j].vir_used,
+      memories[j].vir_tot);
 }
-
 
 void user_session(){
    struct utmp *u;
-   
    setutent();
    while((u=getutent())){
       if(u->ut_type==USER_PROCESS){
-         i++;
-         printf("%s      %s (%s)\n",u->ut_user,u->ut_line,u->ut_host);
+         printf("%s      %s (%s)\n",
+            u->ut_user,u->ut_line,u->ut_host);
       }
    }
-
-   
-}
-// convert character digit to int
-int convert(char n){
-   int result=n-'0';
-   return result;
 }
 
-//cpu usage of one sample in percentage
+// get the first line information from /proc/stat
 float cpu_usage(){
    FILE *fptr;
    int a1,a2,a3,a4,a5,a6,a7;
@@ -87,47 +90,60 @@ float cpu_usage(){
    if(fptr==NULL){
       fprintf(stderr,"Error opening the file.");
       exit(1);
-      
    }
    else{
       char b[1024];
-      fscanf(fptr,"%s %d %d %d %d %d %d %d",b, &a1, &a2, &a3, &a4, &a5, &a6, &a7);
-      //fgets(line,1024,fptr);
+      fscanf(fptr,"%s %d %d %d %d %d %d %d",
+         b, &a1, &a2, &a3, &a4, &a5, &a6, &a7);
       int totaluse=a1+a2+a3+a5+a6+a7;
-      
-      fclose(fptr);
-      return totaluse;
+      int i=fclose(fptr);
+      if(i!=0){
+         fprintf(stderr,"Error closing the file.");
+         exit(1);
+      }
+      else{
+         return totaluse;
+      }
    }
-   
 }
 
+// get the cpu usage from 2 samples taken
+// between 10 microseconds. Resukt has unit %
 void cpu_use(){
    float previous=cpu_usage();
-   usleep(10);
+   usleep(100);
    float current=cpu_usage();
    printf("total cpu use = %.10f %% \n",(current-previous)/previous*100);
 }
 
-//number of cores
+// get number of cores by calculating how many iterations needed
+// to get to line with "intr"
 int cpu_core(){
    int num=0;
    FILE *fptr;
    fptr = fopen("/proc/stat","r");
-   char line[1024];
-   
-   fgets(line,1024,fptr);
-   
-   while(strncmp(line,"intr",4)!=0){
-      fgets(line,1024,fptr);
-      num++;
+
+   if(fptr==NULL){
+      fprintf(stderr,"Error opening the file.");
+      exit(1);
    }
-   
-   fclose(fptr);
-   return num-1;
+   else{
+      char line[1024];
+      fgets(line,1024,fptr);
+      while(strncmp(line,"intr",4)!=0){
+         fgets(line,1024,fptr);
+         num++;
+      }
+      int i=fclose(fptr);
+      if(i!=0){
+         fprintf(stderr,"Error closing the file.");
+         exit(1);
+      }
+      else{
+         return num-1;
+      }
+   }
 }
-
-
-
 
 void program_usage(){
    struct rusage usage;
@@ -147,13 +163,12 @@ bool isnumber(char string[]){
 void get_command(int argc, char **argv, struct option long_options[]){
    int c;
    int option_index;
-   int numbers[3]={-1,-1,-1};
+   int numbers[3]={-1,-1,-1}; // used for the positional argument
    int i=0;
    
    while((c=getopt_long(argc,argv,"",long_options,&option_index))!=-1){
       switch(c){
          case 0:
-
             if(strcmp(long_options[option_index].name, "samples")==0){
                if(optarg){
                   *(long_options[option_index].flag)=atoi(optarg);
@@ -181,13 +196,13 @@ void get_command(int argc, char **argv, struct option long_options[]){
          *(long_options[4].flag)=numbers[1];
       }
       else if (i==1 || i==3){
-         printf("!!!!!!!!!!!!!!!!!!!!!!!!\nunrecognized command line arguments");
+         printf("!!Unrecognized command line arguments!!\n");
       }
    }
    if(*(long_options[3].flag)!=-1 || *(long_options[4].flag)!=-1){
       while(optind<argc){
          if(isnumber(argv[optind])){
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!\nunrecognized command line arguments");
+            printf("!!unrecognized command line arguments!!\n");
             break;
          }
          optind++;
@@ -199,35 +214,40 @@ void sample_tdelay(int sample,int time){
    printf("Nbr of samples: %d -- every %d secs\n",sample,time);
 }
 
-
-void sequential(int sample,int time,struct memory memories[]){
-   int i;
+void sequential(int sample,int time,struct memory memories[],
+   struct option long_options[]){
+   sample_tdelay(sample,time);
+   int i=0;
    int num=cpu_core();
    for(i=0;i<sample;i++){
       printf(">>> iteration %d\n",i);
       program_usage();
       printf("-----------------------------------\n");
-      printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
-      repeat("\n",i);
-      memory(memories, i);
-      print_one_memory(memories,i);
-      repeat("\n",sample-1-i);
-      //may need to print users
-      printf("-----------------------------------\n");
-      printf("Number of cores: %d\n",num);
-      cpu_use();
-      
-      
+      //print memory
+      if(*(long_options[0].flag)==1 || 
+         (*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1)){
+         printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
+         repeat("\n",i);
+         memory(memories, i);
+         print_one_memory(memories,i);
+         repeat("\n",sample-1-i);
+         printf("-----------------------------------\n");
+         printf("Number of cores: %d\n",num);
+         cpu_use();
+         if(*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1){
+            printf("-----------------------------------\n");
+         }
+      }
+      if(*(long_options[1].flag)==1 || 
+         (*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1)){
+         printf("### Sessions/users ###\n");
+         user_session();
+      }
       sleep(time);
    }
-  
 }
 
-
-
-
 void system_opt(int sample,int time, struct memory memories[]){
-   
    int i=0;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -242,77 +262,44 @@ void system_opt(int sample,int time, struct memory memories[]){
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
       cpu_use();
-      sleep(time);
-      
+      sleep(time);  
    }
-   
 }  
 
-//scroll
 void user_opt(int sample,int time){
-   sample_tdelay(sample,time);
    int i;
-   int j;
    for(i=0;i<sample;i++){
+      system("clear");
+      sample_tdelay(sample,time);
       program_usage();
       printf("-----------------------------------\n");
       printf("### Sessions/users ###\n");
       user_session();
-      
       sleep(time);
-      if(i!=sample-1){
-         printf("\x1b[%dA",j+3);
-        
-         printf("\x1b[0J"); 
-      }
    }
-   
-
 }
 
 void all(int sample, int time, struct memory memories[]){
-   
    int i;
-   
    int num=cpu_core();
-
    for(i=0;i<sample;i++){
-      if(i!=sample-1){
-         system("clear");
-      }
+      system("clear");
       sample_tdelay(sample,time);
-      program_usage();
-      
+      program_usage(); 
       printf("-----------------------------------\n");
       printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
-      
-
       memory(memories,i);
       print_memory(memories,i);
-
       repeat("\n",sample-1-i);
       printf("-----------------------------------\n");
       printf("### Sessions/users ###\n");
       user_session();
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
-
-      
-
-      
       cpu_use();
       sleep(time);
-
-      
-
    }
-  
-
 }
-
-
-
-
 
 
 int main(int argc, char **argv){
@@ -353,9 +340,8 @@ int main(int argc, char **argv){
       }
    }
    else{
-
+      sequential(sample,time,memories,long_options);
    }
-   
    system_info();
    return 0;
 }
