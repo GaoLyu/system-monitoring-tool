@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <ctype.h>
 
+
+
 struct memory{
    float phy_used,phy_tot,vir_used,vir_tot;
 };
@@ -50,18 +52,6 @@ void memory(struct memory memories[], int i){
    memories[i].vir_tot=v_tot;
 }
 
-// print all stored memory information 
-// from index 0 to i (inclusive)
-void print_memory(struct memory memories[], int i){
-   for(int j=0;j<=i;j++){
-      printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",
-         memories[j].phy_used,
-         memories[j].phy_tot,
-         memories[j].vir_used,
-         memories[j].vir_tot);
-   }
-}
-
 // print the memory information at index j
 void print_one_memory(struct memory memories[], int j){
    printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB\n",
@@ -69,6 +59,46 @@ void print_one_memory(struct memory memories[], int j){
       memories[j].phy_tot,
       memories[j].vir_used,
       memories[j].vir_tot);
+}
+
+// print all stored memory information 
+// from index 0 to i (inclusive)
+void print_memory(struct memory memories[], int i){
+   for(int j=0;j<=i;j++){
+      print_one_memory(memories,j);
+   }
+}
+
+void print_one_memory_graphics(struct memory memories[], int j){
+   printf("%.2f GB / %.2f GB -- %.2f GB / %.2f GB      |",
+      memories[j].phy_used,
+      memories[j].phy_tot,
+      memories[j].vir_used,
+      memories[j].vir_tot);
+   if(j==0){
+      printf("o  ");
+      printf("%.2f (%.2f)\n",0.00,memories[j].phy_used);
+
+   }
+   else{
+      int sub=(memories[j].phy_used-memories[j-1].phy_used)*100;
+      if(sub<0){
+         repeat(":",-sub);
+         printf("@  ");
+      }
+      else{
+         repeat("#",sub);
+         printf("*  ");
+      }
+      printf("%.2f (%.2f)\n",memories[j].phy_used-memories[j-1].phy_used,memories[j].phy_used);
+
+   }
+}
+
+void print_memory_graphics(struct memory memories[], int i){
+   for(int j=0;j<=i;j++){
+      print_one_memory_graphics(memories,j);
+   }
 }
 
 void user_session(){
@@ -106,9 +136,11 @@ void cpu_usage(float cpu[],int i){
    }
 }
 
+
+
 // get cpu_usage by comparing the information
 // stored at index i-1 and i
-void cpu_use(float cpu[],int i){
+float cpu_use_value(float cpu[],int i){
    float cpu_usage;
    if(i==0){
       cpu_usage=0.0;
@@ -116,8 +148,65 @@ void cpu_use(float cpu[],int i){
    else{
       cpu_usage=(cpu[i]-cpu[i-1])/cpu[i]*100.0;
    }
+   return cpu_usage;
+}
 
+float cpu_use(float cpu[],int i){
+   float cpu_usage=cpu_use_value(cpu,i);
    printf("total cpu use = %.10f %% \n",cpu_usage);
+   return cpu_usage;
+}
+
+int power(int a, int b){
+   int result=1;
+   for(int i=0;i<b;i++){
+      result=result*a;
+   }
+   return result;
+}
+int amplify(float n){
+   int i=0;
+   while(n*power(10,i)<1){
+      i++;
+   }
+   return i;
+}
+
+void cpu_use_one_graphics(float cpu[],int i, int a){
+   float cpu_usage=cpu_use_value(cpu,i);
+   printf("          |||");
+   
+   if(a!=-1){
+      int n=cpu_usage*power(10,a);
+      repeat("|",n);
+   }
+   printf(" %.10f\n",cpu_usage);
+}
+
+float find_base(float cpu[], int i){
+   int j;
+   for(j=0;j<=i;j++){
+      if(cpu_use_value(cpu,j)!=0){
+         return cpu_use_value(cpu,j);
+      }
+   }
+   return 0;
+}
+void cpu_use_graphics(float cpu[],int i){
+   int j;
+   float base=find_base(cpu,i);
+   cpu_use(cpu,i);
+   if(base==0){
+      cpu_use_one_graphics(cpu,i,-1);
+   }
+   else{
+      int a=amplify(base);
+      for(j=0;j<=i;j++){
+         cpu_use_one_graphics(cpu,j,a);
+      }
+   }
+
+   
 }
 
 // get number of cores by calculating how many iterations needed
@@ -199,19 +288,19 @@ void get_command(int argc, char **argv, struct option long_options[]){
          *(long_options[3].flag)=numbers[0];
          *(long_options[4].flag)=numbers[1];
       }
-      else if (i==1 || i==3){
-         printf("!!Unrecognized command line arguments!!\n");
-      }
+      // else if (i==1 || i==3){
+      //    printf("!!Unrecognized command line arguments!!\n");
+      // }
    }
-   if(*(long_options[3].flag)!=-1 || *(long_options[4].flag)!=-1){
-      while(optind<argc){
-         if(isnumber(argv[optind])){
-            printf("!!unrecognized command line arguments!!\n");
-            break;
-         }
-         optind++;
-      }
-   }
+   // if(*(long_options[3].flag)!=-1 || *(long_options[4].flag)!=-1){
+   //    while(optind<argc){
+   //       if(isnumber(argv[optind])){
+   //          printf("!!unrecognized command line arguments!!\n");
+   //          break;
+   //       }
+   //       optind++;
+   //    }
+   // }
 }
 
 void sample_tdelay(int sample,int time){
@@ -219,7 +308,7 @@ void sample_tdelay(int sample,int time){
 }
 
 void sequential(int sample,int time,struct memory memories[],
-   struct option long_options[],float cpu[]){
+   struct option long_options[],float cpu[],int graphics_flag){
    sample_tdelay(sample,time);
    int i=0;
    int num=cpu_core();
@@ -233,12 +322,24 @@ void sequential(int sample,int time,struct memory memories[],
          printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
          repeat("\n",i);
          memory(memories, i);
-         print_one_memory(memories,i);
+
+         if(graphics_flag==0){
+            print_one_memory(memories,i);
+         }
+         else{
+            print_one_memory_graphics(memories,i);
+         }
          repeat("\n",sample-1-i);
          printf("-----------------------------------\n");
          printf("Number of cores: %d\n",num);
          cpu_usage(cpu,i);
-         cpu_use(cpu,i);
+         if(graphics_flag==0){
+            cpu_use(cpu,i);
+         }
+         else{
+            cpu_use_graphics(cpu,i);
+         }
+
          if(*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1){
             printf("-----------------------------------\n");
          }
@@ -252,7 +353,7 @@ void sequential(int sample,int time,struct memory memories[],
    }
 }
 
-void system_opt(int sample,int time, struct memory memories[], float cpu[]){
+void system_opt(int sample,int time, struct memory memories[], float cpu[], int graphics_flag){
    int i=0;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -262,15 +363,26 @@ void system_opt(int sample,int time, struct memory memories[], float cpu[]){
       printf("-----------------------------------\n");
       printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
       memory(memories,i);
-      print_memory(memories,i);
+      if(graphics_flag==0){
+         print_memory(memories,i);
+      }
+      else{
+         print_memory_graphics(memories,i);
+      }
       repeat("\n",sample-1-i);
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
       cpu_usage(cpu,i);
-      cpu_use(cpu,i);
+      if(graphics_flag==0){
+         cpu_use(cpu,i);
+      }
+      else{
+         cpu_use_graphics(cpu,i);
+      }
       sleep(time);  
    }
 }  
+
 
 void user_opt(int sample,int time){
    int i;
@@ -285,7 +397,7 @@ void user_opt(int sample,int time){
    }
 }
 
-void all(int sample, int time, struct memory memories[],float cpu[]){
+void all(int sample, int time, struct memory memories[],float cpu[], int graphics_flag){
    int i;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -295,7 +407,12 @@ void all(int sample, int time, struct memory memories[],float cpu[]){
       printf("-----------------------------------\n");
       printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
       memory(memories,i);
-      print_memory(memories,i);
+      if(graphics_flag==0){
+         print_memory(memories,i);
+      }
+      else{
+         print_memory_graphics(memories,i);
+      }
       repeat("\n",sample-1-i);
       printf("-----------------------------------\n");
       printf("### Sessions/users ###\n");
@@ -303,7 +420,12 @@ void all(int sample, int time, struct memory memories[],float cpu[]){
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
       cpu_usage(cpu,i);
-      cpu_use(cpu,i);
+      if(graphics_flag==0){
+         cpu_use(cpu,i);
+      }
+      else{
+         cpu_use_graphics(cpu,i);
+      }
       sleep(time);
    }
 }
@@ -313,6 +435,7 @@ int main(int argc, char **argv){
 	int system_flag=0;
    int user_flag=0;
    int sequential_flag=0;
+   int graphics_flag=0;
    int sample=-1;
    int time=-1;
    struct option long_options[]={
@@ -321,6 +444,7 @@ int main(int argc, char **argv){
       {"sequential",0,&sequential_flag,1},
       {"samples",2,&sample,10},
       {"tdelay",2,&time,1},
+      {"graphics",0,&graphics_flag,1},
       {0,0,0,0}
    };
    get_command(argc,argv,long_options);
@@ -330,25 +454,35 @@ int main(int argc, char **argv){
    if(time==-1){
       time=1;
    }
+   // printf("samples is %d, tdelay is %d\n",sample,time);
+   // sleep(3);
    // have recognized all the command line arguments
    struct memory memories[sample]; 
    float cpu[sample];
 
    if(sequential_flag==0){
+      
       if(system_flag==1 && user_flag==0){
-         system_opt(sample,time,memories,cpu);
+         system_opt(sample,time,memories,cpu,graphics_flag);
       }
       
       else if(user_flag==1 && system_flag==0){
          user_opt(sample,time);
       }
       else{
-         all(sample,time,memories,cpu);
+         all(sample,time,memories,cpu,graphics_flag);
       }
+      
+      
+      
    }
    else{
-      sequential(sample,time,memories,long_options,cpu);
+      
+      sequential(sample,time,memories,long_options,cpu,graphics_flag);
+        
    }
    system_info();
    return 0;
 }
+
+
