@@ -1,5 +1,6 @@
 # system-monitoring-tool
-This is a C program that will report different metrics of the utilization of a given system. The program will work on Linux operating system.
+This is a C program that will report different metrics of the utilization of a given system. 
+The program will work on Linux operating system.
 
 How to use the program:
   After compiling the file using as such: 
@@ -16,7 +17,7 @@ How to use the program:
       If there is no value, tdelay will be set to default value 1.
       If there are multiple --tdelay=T, tdelay will be set to the latest value.
     samples tdelay
-      This specifies the samples and tdelay by treating them as positional argument in corresponding order.
+      This specifies the samples and tdelay by treating them as positional argument in fixed order.
       There must be exactly 2 postive integers both without flag and the order is fixed.
       There can be no --samples=N nor --tdelay=T. 
     
@@ -66,6 +67,9 @@ How to use the program:
     --sequential
       This indicates that the information will be output sequentially
       
+    --graphics
+      This indicates that graphical representation will be generated to show the variation of data
+      
     Combinations of the command line arguments are allowed and the order is flexible.
   
 An overview of the functions and how I solved the problems:
@@ -78,27 +82,38 @@ An overview of the functions and how I solved the problems:
       The struct memory is stored in an array using memory().
       print_one_memory() prints the memory for a specific sample.
       print_memory() prints all the stored memory.
-  3.  To get cpu core, in cpu_core(), I opened the file /proc/stat and count the number of lines
+  3.  To get graphical representation of memory, I compare the 2 consecutive memory usage. If they differ
+      by a negative value, ":" followed by "@" will be displayed. Otherwise, "|" followed by "*" will be 
+      displayed. Each symbol corresponds to a 0.1 difference. print_one_memory_graphics() prints the
+      memory for a specific sample. print_memory_graphics() prints all the stored memory.
+  4.  To get cpu core, in cpu_core(), I opened the file /proc/stat and count the number of lines
       needed to get to the line starting with "intr". The number-1 is the cpu core.
-  4.  To get cpu usage, I first created a function called cpu_usage() that opens the file /proc/stat
+  5.  To get cpu usage, I first created a function called cpu_usage() that opens the file /proc/stat
       and calculates the total amount of time the CPU has spent performing different kinds of work
-      except the idle. The number is stored in an array. Then to get cpu usage, cpu_use() is created
-      to compare the cpu usage of 2 consecutive samples. The since the first sample has nothing to
-      compare to, the result is set to 0.
-  6.  To get users and their connect sessions, I created a function called user_session()
+      except the idle. The number is stored in an array. cpu_use_value() compares the cpu usage of 2
+      consecutive samples. Since the first sample has nothing to compare to, the result is set to 0.
+      cpu_use() prints out the cpu usage. 
+  6.  To show the graphical representation of cpu usage, I first used find_base(), power() and amplify()
+      to determine the position of the first significant number of the first cpu usage that is not 0. 
+      Then, based on the position, certain number of "|" is displayed. Each cpu usage has at least 3 "|"
+      by default which does not represent the value of the cpu usage. For example, if the cpu usage 
+      of 3 samples are 0.00000%, 0.00023%, 0.00104%, then each "|" represents that the cpu usage is 
+      0.0001% greater than 0, and the 3 samples will have 3, 5, 13 "|" respectively. 
+      cpu_use_one_graphics() and cpu_use_graphics() prints out the result.
+  7.  To get users and their connect sessions, I created a function called user_session()
       which uses setutent() and getutent() from utmp.h to get user name, line, and host.
-  7.  --system is achieved in sys_opt(). After displaying essential information for each sample, 
+  8.  --system is achieved in sys_opt(). After displaying essential information for each sample, 
       it sleeps for tdelay seconds using sleep(), and then refreshes the entire screen using system("clear").
       After the last sample information is displayed, it prints the general system information.
       sys_opt() keeps track of the number of samples collected, so that for the next refresh, it
       can print out all the memory information and leave blank lines for future samples. To leave blank lines
       efficiently, repeat() is created that repeats the same string n times. 
-  8.  --user is achieved in user_opt(). After displaying essential information for each sample, 
+  9.  --user is achieved in user_opt(). After displaying essential information for each sample, 
       it sleeps for tdelay seconds using sleep(), and then refreshes the entire screen using system("clear").
       After the last sample information is displayed, it prints the general system information.
-  9.  If both system and user information is required, the program will call all() whose logic is similar to
+  0.  If both system and user information is required, the program will call all() whose logic is similar to
       sys_opt() and user_opt().
-  10. --sequential is achieved in sequential(). This is similar to the above 3 functions except that there 
+  11. --sequential is achieved in sequential(). This is similar to the above 3 functions except that there 
       is no system("clear").
   
       
