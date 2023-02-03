@@ -111,7 +111,7 @@ void user_session(){
 
 // get the cpu usage of the current sample 
 // and store it in array cpu[] at index i
-void cpu_usage(float cpu[],int i){
+void cpu_usage(float cpu[],float idle[],int i){
    FILE *fptr;
    int a1,a2,a3,a4,a5,a6,a7;
    fptr = fopen("/proc/stat","r");
@@ -123,8 +123,10 @@ void cpu_usage(float cpu[],int i){
       char b[1024];
       fscanf(fptr,"%s %d %d %d %d %d %d %d",
          b, &a1, &a2, &a3, &a4, &a5, &a6, &a7);
-      float totaluse=a1+a2+a3+a5+a6+a7;
+      float totaluse=a1+a2+a3+a6+a7;
+      float idl=a4+a5;
       cpu[i]=totaluse;
+      idle[i]=idl;
       int i=fclose(fptr);
       if(i!=0){
          fprintf(stderr,"Error closing the file.");
@@ -135,78 +137,43 @@ void cpu_usage(float cpu[],int i){
 
 // get cpu_usage by comparing the information
 // stored at index i-1 and i
-float cpu_use_value(float cpu[],int i){
+float cpu_use_value(float cpu[],float idle[],int i){
    float cpu_usage;
    if(i==0){
       cpu_usage=0.0;
    }
    else{
-      cpu_usage=(cpu[i]-cpu[i-1])/cpu[i]*100.0;
+      float dt_idle=cpu[i]-cpu[i-1];
+      float dt=cpu[i]-cpu[i-1]+idle[i]-idle[i-1];
+      cpu_usage=(dt_idle)/dt*100.0;
    }
    return cpu_usage;
 }
 
 // print cpu usage
-float cpu_use(float cpu[],int i){
-   float cpu_usage=cpu_use_value(cpu,i);
-   printf("total cpu use = %.10f %% \n",cpu_usage);
+float cpu_use(float cpu[],float idle[],int i){
+   float cpu_usage=cpu_use_value(cpu,idle,i);
+   printf("total cpu use = %.2f %% \n",cpu_usage);
    return cpu_usage;
 }
 
-int power(int a, int b){
-   int result=1;
-   for(int i=0;i<b;i++){
-      result=result*a;
-   }
-   return result;
-}
 
-// find the position of the first significant number
-int amplify(float n){
-   int i=0;
-   while(n*power(10,i)<1){
-      i++;
-   }
-   return i;
-}
-
-void cpu_use_one_graphics(float cpu[],int i, int a){
-   float cpu_usage=cpu_use_value(cpu,i);
+void cpu_use_one_graphics(float cpu[],float idle[],int i){
+   float cpu_usage=cpu_use_value(cpu,idle,i);
    printf("          |||");
-   
-   if(a!=-1){
-      int n=cpu_usage*power(10,a);
-      repeat("|",n);
-   }
-   printf(" %.10f\n",cpu_usage);
+   int n=cpu_usage;
+   repeat("|",n);
+   printf(" %.2f\n",cpu_usage);
 }
 
-// find the first non-zero cpu usage
-float find_base(float cpu[], int i){
+
+void cpu_use_graphics(float cpu[],float idle[],int i){
    int j;
+   cpu_use(cpu,idle,i);
    for(j=0;j<=i;j++){
-      if(cpu_use_value(cpu,j)!=0){
-         return cpu_use_value(cpu,j);
-      }
+      cpu_use_one_graphics(cpu,idle,j);
    }
-   return 0;
-}
 
-void cpu_use_graphics(float cpu[],int i){
-   int j;
-   float base=find_base(cpu,i);
-   cpu_use(cpu,i);
-   if(base==0){
-      for(j=0;j<=i;j++){
-         cpu_use_one_graphics(cpu,i,-1);
-      }
-   }
-   else{
-      int a=amplify(base);
-      for(j=0;j<=i;j++){
-         cpu_use_one_graphics(cpu,j,a);
-      }
-   }
 }
 
 // get number of cores by calculating how many iterations needed
@@ -293,7 +260,7 @@ void sample_tdelay(int sample,int time){
 }
 
 void sequential(int sample,int time,struct memory memories[],
-   struct option long_options[],float cpu[],int graphics_flag){
+   struct option long_options[],float cpu[],float idle[],int graphics_flag){
    sample_tdelay(sample,time);
    int i=0;
    int num=cpu_core();
@@ -317,12 +284,12 @@ void sequential(int sample,int time,struct memory memories[],
          repeat("\n",sample-1-i);
          printf("-----------------------------------\n");
          printf("Number of cores: %d\n",num);
-         cpu_usage(cpu,i);
+         cpu_usage(cpu,idle,i);
          if(graphics_flag==0){
-            cpu_use(cpu,i);
+            cpu_use(cpu,idle,i);
          }
          else{
-            cpu_use_graphics(cpu,i);
+            cpu_use_graphics(cpu,idle,i);
          }
 
          if(*(long_options[0].flag)!=1 && *(long_options[1].flag)!=1){
@@ -338,7 +305,7 @@ void sequential(int sample,int time,struct memory memories[],
    }
 }
 
-void system_opt(int sample,int time, struct memory memories[], float cpu[], int graphics_flag){
+void system_opt(int sample,int time, struct memory memories[], float cpu[], float idle[], int graphics_flag){
    int i=0;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -357,12 +324,12 @@ void system_opt(int sample,int time, struct memory memories[], float cpu[], int 
       repeat("\n",sample-1-i);
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
-      cpu_usage(cpu,i);
+      cpu_usage(cpu,idle,i);
       if(graphics_flag==0){
-         cpu_use(cpu,i);
+         cpu_use(cpu,idle,i);
       }
       else{
-         cpu_use_graphics(cpu,i);
+         cpu_use_graphics(cpu,idle,i);
       }
       sleep(time);  
    }
@@ -381,7 +348,7 @@ void user_opt(int sample,int time){
    }
 }
 
-void all(int sample, int time, struct memory memories[],float cpu[], int graphics_flag){
+void all(int sample, int time, struct memory memories[],float cpu[], float idle[],int graphics_flag){
    int i;
    int num=cpu_core();
    for(i=0;i<sample;i++){
@@ -403,12 +370,12 @@ void all(int sample, int time, struct memory memories[],float cpu[], int graphic
       user_session();
       printf("-----------------------------------\n");
       printf("Number of cores: %d\n",num);
-      cpu_usage(cpu,i);
+      cpu_usage(cpu,idle,i);
       if(graphics_flag==0){
-         cpu_use(cpu,i);
+         cpu_use(cpu,idle,i);
       }
       else{
-         cpu_use_graphics(cpu,i);
+         cpu_use_graphics(cpu,idle,i);
       }
       sleep(time);
    }
@@ -416,7 +383,7 @@ void all(int sample, int time, struct memory memories[],float cpu[], int graphic
 
 
 int main(int argc, char **argv){
-	int system_flag=0;
+   int system_flag=0;
    int user_flag=0;
    int sequential_flag=0;
    int graphics_flag=0;
@@ -440,20 +407,21 @@ int main(int argc, char **argv){
    }
    struct memory memories[sample]; 
    float cpu[sample];
+   float idle[sample];
    if(sequential_flag==0){
       if(system_flag==1 && user_flag==0){
-         system_opt(sample,time,memories,cpu,graphics_flag);
+         system_opt(sample,time,memories,cpu,idle,graphics_flag);
       }
       
       else if(user_flag==1 && system_flag==0){
          user_opt(sample,time);
       }
       else{
-         all(sample,time,memories,cpu,graphics_flag);
+         all(sample,time,memories,cpu,idle,graphics_flag);
       }
    }
    else{
-      sequential(sample,time,memories,long_options,cpu,graphics_flag);
+      sequential(sample,time,memories,long_options,cpu,idle,graphics_flag);
    }
    system_info();
    return 0;
