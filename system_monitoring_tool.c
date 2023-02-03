@@ -81,9 +81,10 @@ void print_one_memory_graphics(struct memory memories[], int j){
 
    }
    else{
-      int sub=(memories[j].phy_used-memories[j-1].phy_used)*100;
-      if(sub<0){
-         repeat(":",-sub);
+      float s=memories[j].phy_used-memories[j-1].phy_used;
+      int sub=s*100;
+      if(s<0){
+         repeat(":",abs(sub));
          printf("@  ");
       }
       else{
@@ -197,7 +198,9 @@ void cpu_use_graphics(float cpu[],int i){
    float base=find_base(cpu,i);
    cpu_use(cpu,i);
    if(base==0){
-      cpu_use_one_graphics(cpu,i,-1);
+      for(j=0;j<=i;j++){
+         cpu_use_one_graphics(cpu,i,-1);
+      }
    }
    else{
       int a=amplify(base);
