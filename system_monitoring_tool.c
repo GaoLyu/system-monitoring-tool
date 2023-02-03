@@ -10,8 +10,6 @@
 #include <stdbool.h>
 #include <ctype.h>
 
-
-
 struct memory{
    float phy_used,phy_tot,vir_used,vir_tot;
 };
@@ -78,7 +76,6 @@ void print_one_memory_graphics(struct memory memories[], int j){
    if(j==0){
       printf("o  ");
       printf("%.2f (%.2f)\n",0.00,memories[j].phy_used);
-
    }
    else{
       float s=memories[j].phy_used-memories[j-1].phy_used;
@@ -92,7 +89,6 @@ void print_one_memory_graphics(struct memory memories[], int j){
          printf("*  ");
       }
       printf("%.2f (%.2f)\n",memories[j].phy_used-memories[j-1].phy_used,memories[j].phy_used);
-
    }
 }
 
@@ -137,8 +133,6 @@ void cpu_usage(float cpu[],int i){
    }
 }
 
-
-
 // get cpu_usage by comparing the information
 // stored at index i-1 and i
 float cpu_use_value(float cpu[],int i){
@@ -152,6 +146,7 @@ float cpu_use_value(float cpu[],int i){
    return cpu_usage;
 }
 
+// print cpu usage
 float cpu_use(float cpu[],int i){
    float cpu_usage=cpu_use_value(cpu,i);
    printf("total cpu use = %.10f %% \n",cpu_usage);
@@ -165,6 +160,8 @@ int power(int a, int b){
    }
    return result;
 }
+
+// find the position of the first significant number
 int amplify(float n){
    int i=0;
    while(n*power(10,i)<1){
@@ -184,6 +181,7 @@ void cpu_use_one_graphics(float cpu[],int i, int a){
    printf(" %.10f\n",cpu_usage);
 }
 
+// find the first non-zero cpu usage
 float find_base(float cpu[], int i){
    int j;
    for(j=0;j<=i;j++){
@@ -193,6 +191,7 @@ float find_base(float cpu[], int i){
    }
    return 0;
 }
+
 void cpu_use_graphics(float cpu[],int i){
    int j;
    float base=find_base(cpu,i);
@@ -208,8 +207,6 @@ void cpu_use_graphics(float cpu[],int i){
          cpu_use_one_graphics(cpu,j,a);
       }
    }
-
-   
 }
 
 // get number of cores by calculating how many iterations needed
@@ -261,7 +258,6 @@ void get_command(int argc, char **argv, struct option long_options[]){
    int option_index;
    int numbers[3]={-1,-1,-1}; // used for the positional argument
    int i=0;
-   
    while((c=getopt_long(argc,argv,"",long_options,&option_index))!=-1){
       switch(c){
          case 0:
@@ -270,13 +266,11 @@ void get_command(int argc, char **argv, struct option long_options[]){
                   *(long_options[option_index].flag)=atoi(optarg);
                }
             }
-
             if(strcmp(long_options[option_index].name, "tdelay")==0){
                if(optarg){
                   *(long_options[option_index].flag)=atoi(optarg);
                }
             }
-
       }
    }
    if(*(long_options[3].flag)==-1 && *(long_options[4].flag)==-1){
@@ -291,19 +285,7 @@ void get_command(int argc, char **argv, struct option long_options[]){
          *(long_options[3].flag)=numbers[0];
          *(long_options[4].flag)=numbers[1];
       }
-      // else if (i==1 || i==3){
-      //    printf("!!Unrecognized command line arguments!!\n");
-      // }
    }
-   // if(*(long_options[3].flag)!=-1 || *(long_options[4].flag)!=-1){
-   //    while(optind<argc){
-   //       if(isnumber(argv[optind])){
-   //          printf("!!unrecognized command line arguments!!\n");
-   //          break;
-   //       }
-   //       optind++;
-   //    }
-   // }
 }
 
 void sample_tdelay(int sample,int time){
@@ -386,7 +368,6 @@ void system_opt(int sample,int time, struct memory memories[], float cpu[], int 
    }
 }  
 
-
 void user_opt(int sample,int time){
    int i;
    for(i=0;i<sample;i++){
@@ -457,14 +438,9 @@ int main(int argc, char **argv){
    if(time==-1){
       time=1;
    }
-   // printf("samples is %d, tdelay is %d\n",sample,time);
-   // sleep(3);
-   // have recognized all the command line arguments
    struct memory memories[sample]; 
    float cpu[sample];
-
    if(sequential_flag==0){
-      
       if(system_flag==1 && user_flag==0){
          system_opt(sample,time,memories,cpu,graphics_flag);
       }
@@ -475,17 +451,10 @@ int main(int argc, char **argv){
       else{
          all(sample,time,memories,cpu,graphics_flag);
       }
-      
-      
-      
    }
    else{
-      
       sequential(sample,time,memories,long_options,cpu,graphics_flag);
-        
    }
    system_info();
    return 0;
 }
-
-
