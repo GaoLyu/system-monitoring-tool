@@ -71,8 +71,75 @@ How to use the program:
       This indicates that graphical representation will be generated to show the variation of data
       
     Combinations of the command line arguments are allowed and the order is flexible.
-  
-An overview of the functions and how I solved the problems:
+
+An overview of the functions:
+  1.  void repeat(char * string, int num)
+        Prints string num of times.
+  2.  void system_info()
+        Prints system name, machine name, version, release and architecture obtained
+        using sys/utsname.h.
+  3.  void memory(struct memory memories[], int i)
+        Stores the current memory information in array memories at index i. 
+        memory information includes used physical, total physical, used virtual,
+        total virtual memory obtained from sys/sysinfo.h.
+  4.  void print_one_memory(struct memory memories[], int j)
+        Prints the memory information stored in memories at index j.
+  5.  void print_memory(struct memory memories[], int i)
+        Prints memory information stored in memories from index 0 to i inclusive.
+  6.  void print_one_memory_graphics(struct memory memories[], int j)
+        Prints the graphical representation of memory information stored 
+        in memories at index j.
+  7.  void print_memory_graphics(struct memory memories[], int i)
+        Prints the graphical representation of memory information stored in
+        memories from index 0 to i inclusive.
+  8.  void user_session()
+        Prints information of currently connected users, including user name,
+        line and host obtained from utmp.h.
+  9.  void cpu_usage(float cpu[],float idle[],int i)
+        Stores the sum of user, nice, system, irq, softirq in cpu at index i and stores
+        the sum of idle and iowait in idle at index i. These values are obtained from
+        /proc/stat.
+  10. float cpu_use_value(float cpu[],float idle[],int i)
+        Returns cpu usage obtained by comparing the value stored in cpu and idle at index
+        i-1 and i. If i is 0, then since it is the first sample, cpu usage is set to be 0.
+        If i is greater than 0, then cpu usage is 
+        (cpu[i]-cpu[i-1])/(cpu[i]-cpu[i-1]+idle[i]-idle[i-1]) * 100 whose unit is %.
+  11. float cpu_use(float cpu[],float idle[],int i){
+        Returns cpu usage by comparing the value stored in cpu and idle at index
+        i-1 and i. Prints cpu usage message.
+  12. void cpu_use_one_graphics(float cpu[],float idle[],int i)
+        Prints the graphical representation of cpu usage of the i+1 sample.
+  13. void cpu_use_graphics(float cpu[],float idle[],int i)
+        Prints the graphical representation of cpu usage of the first sample to the i+1 sample.
+  14. int cpu_core()
+        Returns the number of cpu core by calculating how many iterations needed to 
+        get to line with "intr" in /proc/stat.
+  15. void program_usage()
+        Prints the memory usage of the current program obtained from sys/resource.h.
+  16. bool isnumber(char string[])
+        Returns true if and only if string is a number.
+  17. void get_command(int argc, char ** argv, struct option long_options[])
+        Changes the flags stored in long_options if from argv with argc-1 command line
+        arguments, the desired long options or position arguments are read.
+  18. void sample_tdelay(int sample,int time)
+        Prints how many sample are collected in total and their time delay.
+  19. void sequential(int sample,int time,struct memory memories[],
+      struct option long_options[],float cpu[],float idle[],int graphics_flag)
+        Prints all information obtained from sample, time, memories, long_options,
+        cpu, idle, and graphics_flag sequentially.
+  20. void system_opt(int sample,int time, struct memory memories[], float cpu[], 
+      float idle[], int graphics_flag)
+        Prints each sample's system information by refreshing the screen, based on
+        sample, time, memories, cpu, idle, and graphics_flag.
+  21. void user_opt(int sample,int time)
+        Prints each sample's user information by refreshing the screen, based on
+        sample and time.
+  22. void all(int sample, int time, struct memory memories[],float cpu[], 
+      float idle[],int graphics_flag)
+        Prints all information obtained from sample, time, memories, cpu, 
+        idle, and graphics_flag by refreshing the screen.
+
+How I solved the problems:
   1.  To get the command line arguments, I created a function called get_command(), 
       and used the getopt_long function from getopt.h. To check positional argument, 
       isnumber() is created to check if the command is an integer.
@@ -93,13 +160,10 @@ An overview of the functions and how I solved the problems:
       except the idle. The number is stored in an array. cpu_use_value() compares the cpu usage of 2
       consecutive samples. Since the first sample has nothing to compare to, the result is set to 0.
       cpu_use() prints out the cpu usage. 
-  6.  To show the graphical representation of cpu usage, I first used find_base(), power() and amplify()
-      to determine the position of the first significant number of the first cpu usage that is not 0. 
-      Then, based on the position, certain number of "|" is displayed. Each cpu usage has at least 3 "|"
-      by default which does not represent the value of the cpu usage. For example, if the cpu usage 
-      of 3 samples are 0.00000%, 0.00023%, 0.00104%, then each "|" represents that the cpu usage is 
-      0.0001% greater than 0, and the 3 samples will have 3, 5, 13 "|" respectively. 
-      cpu_use_one_graphics() and cpu_use_graphics() prints out the result.
+  6.  To show the graphical representation of cpu usage, except for the first 3 "|" set by default, each 
+      "|" represents a 1% above 0. For example, if the cpu usage of 3 samples are 0.00%, 2.31%, 11.23%, 
+      then the 3 samples will have 3, 5, 14 "|"s respectively. cpu_use_one_graphics() and 
+      cpu_use_graphics() prints out the result.
   7.  To get users and their connect sessions, I created a function called user_session()
       which uses setutent() and getutent() from utmp.h to get user name, line, and host.
   8.  --system is achieved in sys_opt(). After displaying essential information for each sample, 
@@ -115,7 +179,3 @@ An overview of the functions and how I solved the problems:
       sys_opt() and user_opt().
   11. --sequential is achieved in sequential(). This is similar to the above 3 functions except that there 
       is no system("clear").
-  
-      
-  
-
