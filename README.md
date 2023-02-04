@@ -4,7 +4,7 @@ The program will work on Linux operating system.
 
 How to use the program:
   After compiling the file using as such: 
-    gcc a1.c
+    gcc system_monitoring_tool.c
   You can run the program with the combinations of these command-line options:
     --samples=N
       This specifies that N samples will be collected. 
