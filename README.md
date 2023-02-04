@@ -175,7 +175,7 @@ How I solved the problems:
   9.  --user is achieved in user_opt(). After displaying essential information for each sample, 
       it sleeps for tdelay seconds using sleep(), and then refreshes the entire screen using system("clear").
       After the last sample information is displayed, it prints the general system information.
-  10.  If both system and user information is required, the program will call all() whose logic is similar to
+  0.  If both system and user information is required, the program will call all() whose logic is similar to
       sys_opt() and user_opt().
   11. --sequential is achieved in sequential(). This is similar to the above 3 functions except that there 
       is no system("clear").
